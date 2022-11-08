@@ -183,17 +183,11 @@ void render(CHIP8* chip){
 
 void interpret(CHIP8* chip){
     
-    printf("Code (pc: 0x%04x): 0x%02x%02x\n", chip->pc, chip->mem[chip->pc], chip->mem[chip->pc+1]);
-
-    // decrease timers
-    chip->delay_timer = chip->delay_timer > 0 ? chip->delay_timer - 1 : 0;
-    if (chip->sound_timer > 0){
-        chip->sound_timer--;
-    } else {
-        SDL_PauseAudio(1); // stop playing sound
-    } 
+    // printf("Code (pc: 0x%04x): 0x%02x%02x\n", chip->pc, chip->mem[chip->pc], chip->mem[chip->pc+1]);
 
     uint8_t* code = chip->mem + chip->pc;
+    chip->pc+=2;
+
     switch (HIGH(*code)){
         case 0x60: // 6XNN	Store number NN in register VX
             chip->reg[LOW(*code)] = *(code+1);
@@ -366,5 +360,4 @@ void interpret(CHIP8* chip){
             chip->is_running = false; 
             break;
     }
-    chip->pc+=2;
 }
