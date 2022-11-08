@@ -59,17 +59,17 @@ CHIP8* create_CHIP8(){
         exit(1);
     }
 
-    int sample_nr = 0;
+    // int sample_nr = 0;
 
-    SDL_AudioSpec want;
+    SDL_AudioSpec want, have;
+    SDL_memset(&want, 0, sizeof(want));
     want.freq = SAMPLE_RATE; // number of samples per second
     want.format = AUDIO_S16SYS; // sample type (here: signed short i.e. 16 bit)
     want.channels = 1; // only one channel
     want.samples = 2048; // buffer-size
     want.callback = audio_callback; // function SDL calls periodically to refill the buffer
-    want.userdata = &sample_nr; // counter, keeping track of current sample number
+    want.userdata = NULL; //&sample_nr; // counter, keeping track of current sample number
 
-    SDL_AudioSpec have;
     if(SDL_OpenAudio(&want, &have) != 0) SDL_LogError(SDL_LOG_CATEGORY_AUDIO, "Failed to open audio: %s", SDL_GetError());
     if(want.format != have.format) SDL_LogError(SDL_LOG_CATEGORY_AUDIO, "Failed to get the desired AudioSpec");
 
@@ -152,29 +152,38 @@ void handle_events(CHIP8* chip){
 }
 
 void render(CHIP8* chip){
-    if (chip->draw_flag){
-        chip->draw_flag = false;
-        SDL_RenderClear(chip->state.renderer);
-        for (int i = 0; i < PIXEL_HEIGHT*PIXEL_WIDTH; i++){
-            SDL_Rect r = {
-                .x=(i%PIXEL_WIDTH)*10,
-                .y=(i/PIXEL_WIDTH)*10,
-                .w=10, .h=10
-            };
-            if (chip->pixels[i]){
-                SDL_SetRenderDrawColor(chip->state.renderer, 255, 255, 255, 255);
-            } else {
-                SDL_SetRenderDrawColor(chip->state.renderer, 0, 0, 0, 255);
-            }
-            SDL_RenderFillRect(chip->state.renderer, &r);
+    
+    chip->draw_flag = false;
+    SDL_Texture* tex = SDL_CreateTexture(chip->state.renderer, 
+        SDL_PIXELFORMAT_RGBA8888, 
+        SDL_TEXTUREACCESS_TARGET,
+        WIDTH, HEIGHT);
+
+    SDL_SetRenderTarget(chip->state.renderer, tex);
+    SDL_SetRenderDrawColor(chip->state.renderer, 0, 0, 0, 0);
+    SDL_RenderClear(chip->state.renderer);
+    for (int i = 0; i < PIXEL_HEIGHT*PIXEL_WIDTH; i++){
+        SDL_Rect r = {
+            .x=(i%PIXEL_WIDTH)*10,
+            .y=(i/PIXEL_WIDTH)*10,
+            .w=10, .h=10
+        };
+        if (chip->pixels[i]){
+            SDL_SetRenderDrawColor(chip->state.renderer, 255, 255, 255, 255);
+        } else {
+            SDL_SetRenderDrawColor(chip->state.renderer, 0, 0, 0, 0);
         }
-        SDL_RenderPresent(chip->state.renderer);
+        SDL_RenderFillRect(chip->state.renderer, &r);
     }
+    SDL_SetRenderTarget(chip->state.renderer, NULL);
+    SDL_RenderCopy(chip->state.renderer, tex, NULL, NULL);
+    SDL_RenderPresent(chip->state.renderer);
+    SDL_DestroyTexture(tex);
 }
 
 void interpret(CHIP8* chip){
     
-    // printf("Code (pc: 0x%04x): 0x%02x%02x\n", chip->pc, chip->mem[chip->pc], chip->mem[chip->pc+1]);
+    printf("Code (pc: 0x%04x): 0x%02x%02x\n", chip->pc, chip->mem[chip->pc], chip->mem[chip->pc+1]);
 
     // decrease timers
     chip->delay_timer = chip->delay_timer > 0 ? chip->delay_timer - 1 : 0;
@@ -235,14 +244,15 @@ void interpret(CHIP8* chip){
         case 0xC0: // CXNN	Set VX to a random number with a mask of NN
             chip->reg[LOW(*code)] = (rand() % 0xFF) & *(code+1); break;
         case 0x10: // 1NNN	Jump to address NNN
-            chip->pc = ((LOW(*code) << 8) | *(code+1)) - 2; break; 
-            // lower byte of opcode shifted to left by 16 bits, then added with operand.
-            // minus 2 is to accomodate for the plus 2 at the end
+            chip->pc = ((LOW(*code) << 8) | *(code+1)); // lower byte of opcode shifted to left by 16 bits, then added with operand.
+            return; 
         case 0xB0: // BNNN	Jump to address NNN + V0
-            chip->pc = ((LOW(*code) << 8) | *(code+1)) + chip->reg[0] - 2; break;
+            chip->pc = ((LOW(*code) << 8) | *(code+1)) + chip->reg[0]; 
+            return;
         case 0x20: // 2NNN  Execute subroutine starting at address NNN
             chip->stack[chip->sp++] = chip->pc;
-            chip->pc = ((LOW(*code) << 8) | *(code+1)) - 2; break; 
+            chip->pc = ((LOW(*code) << 8) | *(code+1)); 
+            return; 
         case 0x00: {
             switch (*(code+1)){
                 case 0xEE: // 00EE	Return from a subroutine
@@ -252,13 +262,11 @@ void interpret(CHIP8* chip){
                 case 0xE0: // 00E0	Clear the screen
                     memset(chip->pixels, 0, PIXEL_HEIGHT * PIXEL_WIDTH);
                     break;
-                default: 
+                default: // 0NNN	Execute machine language subroutine at address NNN; not implemented
                     fprintf(stderr, "Encountered: 0x%02x%02x\n", *code, *(code+1));
                     chip->is_running = false; 
                     break;
             }
-            // 0NNN	Execute machine language subroutine at address NNN
-            // not implemented
         } break;
         case 0x30: // 3XNN	Skip the following instruction if the value of register VX equals NN
             if (chip->reg[LOW(*code)] == *(code+1)) chip->pc += 2;
@@ -298,15 +306,9 @@ void interpret(CHIP8* chip){
                     chip->I = chip->reg[LOW(*code)] * 5; break; // each font character is 5 bytes long
                 case 0x33: { // FX33	Store the binary-coded decimal equivalent of the value stored in register VX at addresses I, I+1, and I+2
                     uint8_t vx = chip->reg[LOW(*code)];
-                    while (vx >= 100 && vx - 100 >= 100) 
-                        vx -= 100;
-                    chip->mem[chip->I] = vx;
-                    while (vx >= 10 && vx - 10 >= 10) 
-                        vx -= 10;
-                    chip->mem[chip->I + 1] = vx;
-                    while (vx >= 1 && vx - 1 >= 1) 
-                        vx -= 1;
-                    chip->mem[chip->I + 2] = vx;
+                    chip->mem[chip->I] = vx/100;
+                    chip->mem[chip->I+1] = (vx/10)%10;
+                    chip->mem[chip->I+2] = (vx%10)%10;
                 } break;
                 case 0x55: { // FX55	Store the values of registers V0 to VX inclusive in memory starting at address I. I is set to I + X + 1 after operation
                     for (int i = 0; i < LOW(*code) + 1; i++){

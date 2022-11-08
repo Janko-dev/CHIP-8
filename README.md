@@ -1,3 +1,8 @@
+# CHIP-8 emulator
+
+Emulator passes https://github.com/corax89/chip8-test-rom 
+
+
 ## References:
 - https://github.com/corax89/chip8-test-rom
 - https://github.com/Skosulor/c8int 
