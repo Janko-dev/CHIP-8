@@ -10,10 +10,11 @@ Currently, the emulator passes [corax89's chip8-test-rom](https://github.com/cor
 ## Keyboard layout
 The keyboard mapping is the following. 
 ```
-[1][2][3][4]          [1][2][3][c]
-[q][w][e][r]   --->   [4][5][6][d]
-[a][s][d][f]   --->   [7][8][9][e]
-[z][x][c][v]          [a][0][b][f]
+  keyboard                  layout
+[1][2][3][4]   ------>   [1][2][3][c]
+[q][w][e][r]   maps to   [4][5][6][d]
+[a][s][d][f]   ------>   [7][8][9][e]
+[z][x][c][v]             [a][0][b][f]
 ```
 
 ## Quick start
