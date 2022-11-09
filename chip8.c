@@ -1,4 +1,5 @@
 #include "chip8.h"
+#include "math.h"
 
 uint8_t fontset[80] = { 
     0xF0, 0x90, 0x90, 0x90, 0xF0, //0
@@ -28,7 +29,7 @@ void audio_callback(void *user_data, Uint8 *raw_buffer, int bytes)
     for(int i = 0; i < length; i++, sample_nr++)
     {
         double time = (double)sample_nr / (double)SAMPLE_RATE;
-        buffer[i] = (Sint16)(AMPLITUDE * sin(2.0f * M_PI * 441.0f * time)); // render 441 HZ sine wave
+        // buffer[i] = (Sint16)(AMPLITUDE * sin(2.0f * M_PI * 441.0f * time)); // render 441 HZ sine wave
     }
 }
 
