@@ -1,7 +1,20 @@
 # CHIP-8 emulator
-An interpreter implementation for the fictional CHIP-8 machine language. The emulator is written in C and uses SDL2 as graphics library. Make sure to adjust the `Makefile` with your own include and linking paths. 
+An interpreter implementation for the fictional CHIP-8 assembly language. The emulator is written in C and uses [SDL2](https://www.libsdl.org/) as graphics library. Make sure to adjust the `Makefile` with your own include and linking paths to the SDL2 library if you are running on Windows. On Linux, make you do not have to touch the `Makefile`. However, make sure SDL2 is installed with the following line
 
-Currently, the emulator passes [corax89's chip8-test-rom](https://github.com/corax89/chip8-test-rom). Most instructions are implemented. However, audio does not work yet.  
+```
+sudo apt-get install libsdl2-dev
+```
+
+Currently, the emulator passes [corax89's chip8-test-rom](https://github.com/corax89/chip8-test-rom). Most instructions are implemented. However, audio is not implemented yet.
+
+## Keyboard layout
+The keyboard mapping is the following. 
+```
+[1][2][3][4]          [1][2][3][c]
+[q][w][e][r]   --->   [4][5][6][d]
+[a][s][d][f]   --->   [7][8][9][e]
+[z][x][c][v]          [a][0][b][f]
+```
 
 ## Quick start
 ```
